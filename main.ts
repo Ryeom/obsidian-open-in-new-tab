@@ -20,11 +20,8 @@ export default class OpenInNewTabPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-
 		this.addSettingTab(new OpenInNewTabSettingTab(this.app, this));
-
 		this.monkeyPatchOpenLinkText();
-
 		this.registerDomEvent(document, "click", this.generateClickHandler(this.app), {
 			capture: true,
 		});
@@ -42,9 +39,8 @@ export default class OpenInNewTabPlugin extends Plugin {
 		this.uninstallMonkeyPatch && this.uninstallMonkeyPatch();
 	}
 
-	shouldOpenInNewTab(path: string): boolean {
-		const file = this.app.vault.getAbstractFileByPath(path);
-		if (!(file instanceof TFile)) return true;
+	shouldOpenInNewTab(file: TFile | null): boolean {
+		if (!file) return true;
 
 		const cache = this.app.metadataCache.getFileCache(file);
 		const frontmatter = cache?.frontmatter;
@@ -52,7 +48,7 @@ export default class OpenInNewTabPlugin extends Plugin {
 		if (!frontmatter) return true;
 
 		const isIgnoreTarget = this.settings.rules.some(rule =>
-			rule.key && frontmatter[rule.key] === rule.value
+			rule.key && String(frontmatter[rule.key]) === String(rule.value)
 		);
 
 		return !isIgnoreTarget;
@@ -68,24 +64,22 @@ export default class OpenInNewTabPlugin extends Plugin {
 					newLeaf?: boolean,
 					openViewState?: OpenViewState) {
 
-					const fileName = linkText.split("#")?.[0];
-					const fullPath = fileName === "" ? sourcePath : `${fileName}${fileName.endsWith('.md') ? '' : '.md'}`;
-					const isSameFile = fileName === "" || `${fileName}.md` === sourcePath;
+					const targetFile = self.app.metadataCache.getFirstLinkpathDest(linkText.split("#")[0], sourcePath);
 
 					let fileAlreadyOpen = false;
-					if (!isSameFile) {
+					if (targetFile) {
 						this.app.workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
 							const viewState = leaf.getViewState();
-							const matchesMarkdownFile = viewState.type === 'markdown' && viewState.state?.file?.endsWith(`${fileName}.md`);
-							if (matchesMarkdownFile) {
+							if (viewState.state?.file === targetFile.path) {
 								this.app.workspace.setActiveLeaf(leaf);
 								fileAlreadyOpen = true;
 							}
 						});
 					}
 
-					// YAML 조건에 따른 새 탭 여부 결정
-					let openNewLeaf = self.shouldOpenInNewTab(fullPath);
+					let openNewLeaf = self.shouldOpenInNewTab(targetFile);
+
+					const isSameFile = !linkText.split("#")[0] || (targetFile && targetFile.path === sourcePath);
 
 					if (isSameFile) {
 						openNewLeaf = newLeaf || false;
@@ -104,7 +98,6 @@ export default class OpenInNewTabPlugin extends Plugin {
 		});
 	}
 
-	// 2. 파일 탐색기 등에서의 클릭 핸들러
 	generateClickHandler(appInstance: App) {
 		const self = this;
 		return function (event: MouseEvent) {
@@ -116,6 +109,8 @@ export default class OpenInNewTabPlugin extends Plugin {
 			if (isNavFile && titleEl && pureClick) {
 				const path = titleEl.getAttribute("data-path");
 				if (path) {
+					const file = appInstance.vault.getAbstractFileByPath(path);
+
 					let result = false;
 					appInstance.workspace.iterateAllLeaves((leaf) => {
 						if (leaf.getViewState().state?.file === path) {
@@ -132,7 +127,7 @@ export default class OpenInNewTabPlugin extends Plugin {
 
 					if (!result) {
 						event.stopPropagation();
-						const openNewLeaf = self.shouldOpenInNewTab(path);
+						const openNewLeaf = self.shouldOpenInNewTab(file instanceof TFile ? file : null);
 						appInstance.workspace.openLinkText(path, path, openNewLeaf);
 					}
 				}
@@ -141,7 +136,6 @@ export default class OpenInNewTabPlugin extends Plugin {
 	}
 }
 
-// 3. 설정 탭 구현
 class OpenInNewTabSettingTab extends PluginSettingTab {
 	plugin: OpenInNewTabPlugin;
 
