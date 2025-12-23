@@ -1,47 +1,26 @@
-# Obsidian Open In New Tab Plugin
 
-**NOTE**
+# Obsidian Open in New Tab (Enhanced Version)
 
-The way this plugin works is through hijacking the clicks for the file explorer. This means that it won't work for other parts of Obsidian like the quick switcher. This plugins is just a hack and Obsidian will need to implement the underlying functionality at the end of the day.
+This is a forked and enhanced version of [patleeman/obsidian-open-in-new-tab](https://github.com/patleeman/obsidian-open-in-new-tab). It includes additional logic to conditionally control tab behavior based on file metadata.
 
-I'm not putting much effort into expanding on this plugin since it would essentially be a game of wackamole to hackily patch all potential use cases. If you'd like this functionality natively, I suggest submitting a feature request to Obsidian.
+## Key Enhancements
 
+Unlike the original plugin that opens *all* files in a new tab, this version allows for **conditional tab management** using YAML frontmatter properties.
 
-# Introduction
+* **Conditional New Tab**: Decide whether to open a file in a new tab or the current tab based on its YAML properties.
+    * **Rule Management**: Add/Delete multiple Key-Value pairs in the settings tab to define exceptions.
+    * **Deep Path Resolution**: Enhanced file path detection that works accurately even for files nested deep within subdirectories.
+    * **Type-Safe Comparison**: Robust comparison logic that handles string, number, and boolean YAML values correctly.
 
-This plugin does two things:
+## How to Use
 
-1. In File Explorer, open all documents in a new tab.
-2. If the file is already open in an existing tab, make that tab active instead of opening up a new tab.
+1. Go to **Settings > Open in New Tab**.
+2. Add a new rule (e.g., `type` : `hub`).
+3. If a file has `type: hub` in its YAML frontmatter, it will open in the **current tab**.
+4. All other files will continue to open in a **new tab** by default.
 
-[Relevant Obsidian forum thread](https://forum.obsidian.md/t/click-links-files-to-open-in-new-tab-by-default/7347)
+## Technical Improvements
 
-Props to [scambier/obsidian-no-dupe-leaves](https://github.com/scambier/obsidian-no-dupe-leaves).
-
-## How to use
-
--   Clone this repo.
--   `npm i` or `yarn` to install dependencies
--   `npm run dev` to start compilation in watch mode.
-
-## Releasing new releases
-
--   Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
--   Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
--   Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
--   Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
--   Publish the release.
-
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
-
-## Adding your plugin to the community plugin list
-
--   Check https://github.com/obsidianmd/obsidian-releases/blob/master/plugin-review.md
--   Publish an initial version.
--   Make sure you have a `README.md` file in the root of your repo.
--   Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## API Documentation
-
-See https://github.com/obsidianmd/obsidian-api
+* **Metadata Cache Integration**: Uses Obsidian's `metadataCache` for high-performance, I/O-free property lookups.
+* **Improved Path Discovery**: Implemented `getFirstLinkpathDest` to resolve relative links to absolute vault paths.
+* **Monkey Patching**: Robust wrapping of `Workspace.openLinkText` using `monkey-around`.
